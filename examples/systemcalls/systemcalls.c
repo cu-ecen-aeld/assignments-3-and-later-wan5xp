@@ -1,4 +1,8 @@
 #include "systemcalls.h"
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +20,19 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    if(cmd == NULL){
+	    return false;
+    }
+
+    int ret = system(cmd);
+    if(ret == -1){
+	    // Cannot create child process or retrieve status
+	    return false;
+    }
+    // Shell could not be executed, return value is 127?
+    if(ret == 127){
+	    return false;
+    }
 
     return true;
 }
@@ -58,10 +75,32 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    bool ret = false;
+    do {
+        pid_t pid = fork();
+	if (pid == -1){
+	    // Failed to fork
+	    break;
+	} else if (pid > 0) {
+	    // We need to wait for child to finish
+	    int status;
+	    if(waitpid(pid, &status, 0) == -1){
+	        break;
+	    }
+	    if(WEXITSTATUS(status) == 0){
+	        ret = true;
+	    }
+	} else {
+	    // Child need to execv
+    	    if(execv(command[0], command) == -1){
+	        exit(EXIT_FAILURE);
+    	    }
+        }
+    } while(0);
 
     va_end(args);
 
-    return true;
+    return ret;
 }
 
 /**
@@ -93,7 +132,39 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+    bool ret = false;
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if(fd >= 0){
+
+	    do {
+
+		pid_t pid = fork();
+		if (pid == -1){
+		    // Failed to fork
+		    break;
+		} else if (pid > 0) {
+		    // We need to wait for child to finish
+		    int status;
+		    if(waitpid(pid, &status, 0) == -1){
+			break;
+		    }
+		    if(WEXITSTATUS(status) == 0){
+			ret = true;
+		    }
+		} else {
+		    // Child need to execv
+		    if(dup2(fd, 1) < 0) {
+			exit(EXIT_FAILURE);
+		    }
+		    if(execv(command[0], command) == -1){
+			exit(EXIT_FAILURE);
+		    }
+		}
+	    } while(0);
+	    close(fd);
+    }
+
     va_end(args);
 
-    return true;
+    return ret;
 }
