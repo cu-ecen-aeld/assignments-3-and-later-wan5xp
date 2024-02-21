@@ -1,10 +1,13 @@
 CROSS_COMPILE?=
-GCC=gcc
+CC?=$(CROSS_COMPILE)gcc
 
-COMPILER=$(CROSS_COMPILE)$(GCC)
+all: writer
+
+
 writer: writer.c
-	$(COMPILER) writer.c -o writer
-
+	$(CC) $(CCFLAGS) -c writer.c
+	$(CC) $(LDFLAGS) writer.o -o writer
 
 clean:
-	rm -f writer
+	rm -f writer.o writer
+
