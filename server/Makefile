@@ -1,5 +1,6 @@
 CROSS_COMPILE?=
 CC?=${CROSS_COMPILE}gcc
+LDFLAGS+=-lpthread -pthread
 aesdsocket:
 	@echo "Compiling aesdsocket"
 	$(CC) $(CCFLAGS) -c aesdsocket.c
